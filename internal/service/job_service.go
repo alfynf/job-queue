@@ -36,5 +36,5 @@ func (s *jobService) SubmitJob(ctx context.Context, j job.Job) (string, error) {
 }
 
 func (s *jobService) GetJobStatus(ctx context.Context, uuid string) (job.Job, error) {
-	return job.Job{}, nil
+	return s.repo.GetByUUID(ctx, uuid)
 }

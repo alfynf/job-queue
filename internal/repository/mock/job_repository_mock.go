@@ -18,7 +18,7 @@ func (m *JobRepository) Save(ctx context.Context, j job.Job) error {
 
 func (m *JobRepository) GetByUUID(ctx context.Context, uuid string) (job.Job, error) {
 	args := m.Called(ctx, uuid)
-	return job.Job{}, args.Error(0)
+	return args.Get(0).(job.Job), args.Error(1)
 }
 
 func (m *JobRepository) UpdateStatus(ctx context.Context, uuid string, status job.Status, errMessage *string) error {
