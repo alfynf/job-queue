@@ -18,7 +18,7 @@ func TestSubmitJob(t *testing.T) {
 
 	inputJob := job.Job{
 		UUID:      "f6c04811-d7f0-49d3-b345-16be7cab99f8",
-		Type:      int(job.TypeSendingEmail),
+		Type:      job.TypeSendingEmail,
 		Payload:   map[string]interface{}{"to": "user@mail.com"},
 		MaxRetry:  3,
 		CreatedAt: time.Now(),
@@ -26,7 +26,7 @@ func TestSubmitJob(t *testing.T) {
 		Status:    job.StatusPending,
 	}
 
-	// mockJobRepo.On("Save", ctx, mock.Anything).Return(nil)
+	// mockJobRepo.On("Save", ctx, mock.Anything).Return(nil) <- bypassing all input content
 	mockJobRepo.On("Save", ctx, mock.MatchedBy(func(j job.Job) bool {
 		return j.Status == job.StatusPending
 	})).Return(nil)

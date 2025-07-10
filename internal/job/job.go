@@ -1,9 +1,14 @@
 package job
 
-import "time"
+import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
+	"time"
+)
 
 type Status string
-type Type int
+type Type string
 
 const (
 	StatusPending Status = "pending"
@@ -13,14 +18,14 @@ const (
 )
 
 const (
-	TypeSendingEmail Type = iota + 1
-	TypeGeneratePdf
+	TypeSendingEmail Type = "sending_mail"
+	TypeGeneratePdf  Type = "generate_pdf"
 )
 
 type Job struct {
-	UUID             string
-	Type             int
-	Payload          map[string]interface{}
+	UUID             string `gorm:"primaryKey;default:uuid_generate_v4()"`
+	Type             Type
+	Payload          JSONB `gorm:"type:jsonb"`
 	Status           Status
 	RetryCount       int
 	MaxRetry         int
@@ -30,4 +35,21 @@ type Job struct {
 	FinishedAt       *time.Time
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
+}
+
+// JSONB Interface for JSONB Field of Job Table
+
+type JSONB map[string]interface{}
+
+func (j *JSONB) Scan(value interface{}) error {
+	bytes, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("type assertion to []byte failed")
+	}
+
+	return json.Unmarshal(bytes, j)
+}
+
+func (j JSONB) Value() (driver.Value, error) {
+	return json.Marshal(j)
 }
