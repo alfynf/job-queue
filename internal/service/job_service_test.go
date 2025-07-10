@@ -7,6 +7,7 @@ import (
 
 	"github.com/alfynf/job-queue/internal/job"
 	mockRepo "github.com/alfynf/job-queue/internal/repository/mock"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -17,7 +18,6 @@ func TestSubmitJob(t *testing.T) {
 	jobService := NewJobService(mockJobRepo)
 
 	inputJob := job.Job{
-		UUID:      "f6c04811-d7f0-49d3-b345-16be7cab99f8",
 		Type:      job.TypeSendingEmail,
 		Payload:   map[string]interface{}{"to": "user@mail.com"},
 		MaxRetry:  3,
@@ -34,7 +34,7 @@ func TestSubmitJob(t *testing.T) {
 	uuid, err := jobService.SubmitJob(ctx, inputJob)
 
 	assert.NoError(t, err)
-	assert.Equal(t, inputJob.UUID, uuid)
+	assert.NotNil(t, uuid)
 	mockJobRepo.AssertCalled(t, "Save", ctx, mock.Anything)
 
 }
@@ -44,19 +44,19 @@ func TestGetJobStatus(t *testing.T) {
 	mockJobRepo := new(mockRepo.JobRepository)
 	jobService := NewJobService(mockJobRepo)
 
-	uuid := "f6c04811-d7f0-49d3-b345-16be7cab99f8"
+	uuid := uuid.New()
 
 	expectedJob := job.Job{
 		UUID:   uuid,
 		Status: job.StatusSuccess,
 	}
 
-	mockJobRepo.On("GetByUUID", ctx, uuid).Return(expectedJob, nil)
+	mockJobRepo.On("GetByUUID", ctx, uuid.String()).Return(expectedJob, nil)
 
-	actualJob, err := jobService.GetJobStatus(ctx, uuid)
+	actualJob, err := jobService.GetJobStatus(ctx, uuid.String())
 
 	assert.NoError(t, err)
-	assert.Equal(t, expectedJob.UUID, actualJob.UUID)
+	assert.Equal(t, expectedJob.UUID.String(), actualJob.UUID.String())
 	assert.Equal(t, expectedJob.Status, actualJob.Status)
-	mockJobRepo.AssertCalled(t, "GetByUUID", ctx, uuid)
+	mockJobRepo.AssertCalled(t, "GetByUUID", ctx, uuid.String())
 }

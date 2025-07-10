@@ -32,7 +32,7 @@ func (s *jobService) SubmitJob(ctx context.Context, j job.Job) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return j.UUID, nil
+	return j.UUID.String(), nil
 }
 
 func (s *jobService) GetJobStatus(ctx context.Context, uuid string) (job.Job, error) {

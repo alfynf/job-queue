@@ -69,7 +69,7 @@ func (w *JobWorker) processBatch(ctx context.Context) {
 
 func (w *JobWorker) handleJob(ctx context.Context, j job.Job) {
 
-	err := w.repo.UpdateStatus(ctx, j.UUID, job.StatusRunning, nil)
+	err := w.repo.UpdateStatus(ctx, j.UUID.String(), job.StatusRunning, nil)
 	if err != nil {
 		log.Printf("error update status %s on worker: %v\n", string(job.StatusRunning), err)
 	}
@@ -77,26 +77,30 @@ func (w *JobWorker) handleJob(ctx context.Context, j job.Job) {
 	handler, ok := w.handlers[j.Type]
 	if !ok {
 		errMessage := "no handler for job type: " + string(j.Type)
-		err := w.repo.UpdateStatus(ctx, j.UUID, job.StatusFailed, &errMessage)
-		log.Printf("error update status on worker: %v\n", err)
+		err := w.repo.UpdateStatus(ctx, j.UUID.String(), job.StatusFailed, &errMessage)
+		if err != nil {
+			log.Printf("error update status %s on worker: %v\n", job.StatusFailed, err)
+
+		}
+		log.Printf("error handler on worker: %v\n", err)
 	}
 
 	err = handler(ctx, j.Payload)
 	if err != nil {
 		errMessage := err.Error()
 		if j.RetryCount+1 >= j.MaxRetry {
-			err := w.repo.UpdateStatus(ctx, j.UUID, job.StatusFailed, &errMessage)
+			err := w.repo.UpdateStatus(ctx, j.UUID.String(), job.StatusFailed, &errMessage)
 			if err != nil {
 				log.Printf("error update status %s on worker: %v\n", string(job.StatusFailed), err)
 			}
 		} else {
-			err := w.repo.UpdateStatus(ctx, j.UUID, job.StatusPending, &errMessage)
+			err := w.repo.UpdateStatus(ctx, j.UUID.String(), job.StatusPending, &errMessage)
 			if err != nil {
 				log.Printf("error update status %s on worker: %v\n", string(job.StatusPending), err)
 			}
 		}
 	} else {
-		err := w.repo.UpdateStatus(ctx, j.UUID, job.StatusSuccess, nil)
+		err := w.repo.UpdateStatus(ctx, j.UUID.String(), job.StatusSuccess, nil)
 		if err != nil {
 			log.Printf("error update status %s on worker: %v\n", string(job.StatusSuccess), err)
 		}

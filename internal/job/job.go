@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type Status string
@@ -23,7 +26,7 @@ const (
 )
 
 type Job struct {
-	UUID             string `gorm:"primaryKey;default:uuid_generate_v4()"`
+	UUID             uuid.UUID `gorm:"primaryKey;type:uuid;default:uuid_generate_v4()"`
 	Type             Type
 	Payload          JSONB `gorm:"type:jsonb"`
 	Status           Status
@@ -52,4 +55,10 @@ func (j *JSONB) Scan(value interface{}) error {
 
 func (j JSONB) Value() (driver.Value, error) {
 	return json.Marshal(j)
+}
+
+func (j *Job) BeforeCreate(tx *gorm.DB) (err error) {
+	// UUID version 4
+	j.UUID = uuid.New()
+	return
 }
