@@ -21,13 +21,13 @@ func (m *JobRepository) GetByUUID(ctx context.Context, uuid string) (job.Job, er
 	return args.Get(0).(job.Job), args.Error(1)
 }
 
-func (m *JobRepository) UpdateStatus(ctx context.Context, uuid string, status job.Status, errMessage *string) error {
-	args := m.Called(ctx, uuid, status, errMessage)
+func (m *JobRepository) Update(ctx context.Context, uuid string, job job.Job) error {
+	args := m.Called(ctx, uuid, job)
 	return args.Error(0)
 }
 
-func (m *JobRepository) GetPendingJobs(ctx context.Context, limit int) ([]job.Job, error) {
-	args := m.Called(ctx, limit)
+func (m *JobRepository) GetJobsByStatus(ctx context.Context, status job.Status, limit int) ([]job.Job, error) {
+	args := m.Called(ctx, status, limit)
 	return []job.Job{}, args.Error(0)
 
 }

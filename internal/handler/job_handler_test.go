@@ -100,14 +100,14 @@ func TestGetJobStatusSuccess(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	type resBody struct {
-		UUID   string     `json:"uuid"`
-		Status job.Status `json:"status"`
+		UUID string  `json:"uuid"`
+		Job  job.Job `json:"job"`
 	}
 	var resp resBody
 	_ = json.NewDecoder(rec.Body).Decode(&resp)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, job.StatusPending, resp.Status)
+	assert.Equal(t, job.StatusPending, resp.Job.Status)
 	mockService.AssertExpectations(t)
 
 }

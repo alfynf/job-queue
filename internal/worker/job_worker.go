@@ -9,8 +9,8 @@ import (
 )
 
 type JobRepository interface {
-	GetPendingJobs(ctx context.Context, limit int) ([]job.Job, error)
-	UpdateStatus(ctx context.Context, uuid string, status job.Status, errMessage *string) error
+	GetJobsByStatus(ctx context.Context, status job.Status, limit int) ([]job.Job, error)
+	Update(ctx context.Context, uuid string, job job.Job) error
 }
 
 type JobHandler func(ctx context.Context, payload map[string]interface{}) error
@@ -53,7 +53,7 @@ func (w *JobWorker) Start(ctx context.Context) {
 
 func (w *JobWorker) processBatch(ctx context.Context) {
 	// TODO: lock pending job so it wont be processed more than once
-	jobs, err := w.repo.GetPendingJobs(ctx, w.batch)
+	jobs, err := w.repo.GetJobsByStatus(ctx, job.StatusPending, w.batch)
 	if err != nil {
 		log.Printf("worker: failded to get pending jobs: %v\n", err)
 		return
@@ -67,7 +67,8 @@ func (w *JobWorker) processBatch(ctx context.Context) {
 
 func (w *JobWorker) handleJob(ctx context.Context, j job.Job) {
 
-	err := w.repo.UpdateStatus(ctx, j.UUID.String(), job.StatusRunning, nil)
+	j.Status = job.StatusRunning
+	err := w.repo.Update(ctx, j.UUID.String(), j)
 	if err != nil {
 		log.Printf("error update status %s on worker: %v\n", string(job.StatusRunning), err)
 	}
@@ -75,7 +76,9 @@ func (w *JobWorker) handleJob(ctx context.Context, j job.Job) {
 	handler, ok := w.handlers[j.Type]
 	if !ok {
 		errMessage := "no handler for job type: " + string(j.Type)
-		err := w.repo.UpdateStatus(ctx, j.UUID.String(), job.StatusFailed, &errMessage)
+		j.Status = job.StatusFailed
+		j.LastErrorMessage = &errMessage
+		err := w.repo.Update(ctx, j.UUID.String(), j)
 		if err != nil {
 			log.Printf("error update status %s on worker: %v\n", job.StatusFailed, err)
 			return
@@ -87,20 +90,26 @@ func (w *JobWorker) handleJob(ctx context.Context, j job.Job) {
 
 	err = handler(ctx, j.Payload)
 	if err != nil {
+		j.RetryCount += 1
 		errMessage := err.Error()
 		if j.RetryCount+1 >= j.MaxRetry {
-			err := w.repo.UpdateStatus(ctx, j.UUID.String(), job.StatusFailed, &errMessage)
+			j.Status = job.StatusFailed
+			j.LastErrorMessage = &errMessage
+			err := w.repo.Update(ctx, j.UUID.String(), j)
 			if err != nil {
 				log.Printf("error update status %s on worker: %v\n", string(job.StatusFailed), err)
 			}
 		} else {
-			err := w.repo.UpdateStatus(ctx, j.UUID.String(), job.StatusPending, &errMessage)
+			j.Status = job.StatusPending
+			j.LastErrorMessage = &errMessage
+			err := w.repo.Update(ctx, j.UUID.String(), j)
 			if err != nil {
 				log.Printf("error update status %s on worker: %v\n", string(job.StatusPending), err)
 			}
 		}
 	} else {
-		err := w.repo.UpdateStatus(ctx, j.UUID.String(), job.StatusSuccess, nil)
+		j.Status = job.StatusSuccess
+		err := w.repo.Update(ctx, j.UUID.String(), j)
 		if err != nil {
 			log.Printf("error update status %s on worker: %v\n", string(job.StatusSuccess), err)
 		}

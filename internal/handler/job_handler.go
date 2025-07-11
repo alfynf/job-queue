@@ -74,7 +74,7 @@ func (h *JobHandler) GetJobStatus(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Success get status job",
-		"status":  job.Status,
+		"job":     job,
 	})
 
 }
