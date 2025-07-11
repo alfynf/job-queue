@@ -17,8 +17,9 @@ func NewJobHandler(s service.JobService) *JobHandler {
 }
 
 type SubmitJobRequest struct {
-	Type    string                 `json:"type"`
-	Payload map[string]interface{} `json:"payload"`
+	Type     string                 `json:"type"`
+	MaxRetry int                    `json:"max_retry"`
+	Payload  map[string]interface{} `json:"payload"`
 }
 
 func (h *JobHandler) SubmitJob(c *gin.Context) {
@@ -33,8 +34,9 @@ func (h *JobHandler) SubmitJob(c *gin.Context) {
 	}
 
 	job := job.Job{
-		Type:    job.Type(req.Type),
-		Payload: req.Payload,
+		Type:     job.Type(req.Type),
+		Payload:  req.Payload,
+		MaxRetry: req.MaxRetry,
 	}
 
 	uuid, err := h.service.SubmitJob(c.Request.Context(), job)
@@ -53,7 +55,7 @@ func (h *JobHandler) SubmitJob(c *gin.Context) {
 
 }
 
-func (h *JobHandler) GetJobStatus(c *gin.Context) {
+func (h *JobHandler) GetJobById(c *gin.Context) {
 	uuid := c.Param("uuid")
 	if uuid == "" {
 		c.JSON(http.StatusNotFound, gin.H{

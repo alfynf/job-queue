@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/alfynf/job-queue/internal/job"
+	"github.com/alfynf/job-queue/pkg/logger"
+	"go.uber.org/zap"
 )
 
 type JobRepository interface {
@@ -38,7 +40,6 @@ func (w *JobWorker) Register(jobType job.Type, handler JobHandler) {
 
 func (w *JobWorker) Start(ctx context.Context) {
 	ticker := time.NewTicker(w.interval)
-	log.Println("masuk sini")
 	defer ticker.Stop()
 
 	for {
@@ -67,6 +68,12 @@ func (w *JobWorker) processBatch(ctx context.Context) {
 
 func (w *JobWorker) handleJob(ctx context.Context, j job.Job) {
 
+	start := time.Now()
+	logger.Info("Starting job",
+		zap.String("job_uuid", j.UUID.String()),
+		zap.String("type", string(j.Type)),
+	)
+
 	j.Status = job.StatusRunning
 	err := w.repo.Update(ctx, j.UUID.String(), j)
 	if err != nil {
@@ -92,16 +99,33 @@ func (w *JobWorker) handleJob(ctx context.Context, j job.Job) {
 	if err != nil {
 		j.RetryCount += 1
 		errMessage := err.Error()
-		if j.RetryCount+1 >= j.MaxRetry {
+		j.LastErrorMessage = &errMessage
+
+		if j.RetryCount >= j.MaxRetry {
 			j.Status = job.StatusFailed
 			j.LastErrorMessage = &errMessage
+			timeNow := time.Now()
+			j.FinishedAt = &timeNow
 			err := w.repo.Update(ctx, j.UUID.String(), j)
 			if err != nil {
 				log.Printf("error update status %s on worker: %v\n", string(job.StatusFailed), err)
 			}
+			logger.Error("Job permanently failed",
+				zap.String("job_uuid", j.UUID.String()),
+				zap.String("type", string(j.Type)),
+				zap.Int("retry", j.RetryCount),
+				zap.Error(err),
+			)
+
 		} else {
 			j.Status = job.StatusPending
 			j.LastErrorMessage = &errMessage
+			logger.Warn("Job failed, will retry",
+				zap.String("job_uuid", j.UUID.String()),
+				zap.String("type", string(j.Type)),
+				zap.Error(err),
+				zap.Int("retry", j.RetryCount),
+			)
 			err := w.repo.Update(ctx, j.UUID.String(), j)
 			if err != nil {
 				log.Printf("error update status %s on worker: %v\n", string(job.StatusPending), err)
@@ -109,10 +133,17 @@ func (w *JobWorker) handleJob(ctx context.Context, j job.Job) {
 		}
 	} else {
 		j.Status = job.StatusSuccess
+		timeNow := time.Now()
+		j.FinishedAt = &timeNow
 		err := w.repo.Update(ctx, j.UUID.String(), j)
 		if err != nil {
 			log.Printf("error update status %s on worker: %v\n", string(job.StatusSuccess), err)
 		}
+		logger.Info("Job completed",
+			zap.String("job_uuid", j.UUID.String()),
+			zap.String("type", string(j.Type)),
+			zap.Duration("duration", time.Since(start)),
+		)
 
 	}
 }

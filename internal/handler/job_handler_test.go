@@ -91,7 +91,7 @@ func TestGetJobStatusSuccess(t *testing.T) {
 	router := gin.Default()
 	path := fmt.Sprintf("/jobs/%s", uuid.String())
 	method := "GET"
-	router.GET("/jobs/:uuid", jobHandler.GetJobStatus)
+	router.GET("/jobs/:uuid", jobHandler.GetJobById)
 
 	req, _ := http.NewRequest(method, path, nil)
 	req.Header.Set("Content-Type", "application/json")
