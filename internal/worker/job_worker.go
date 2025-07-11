@@ -32,6 +32,7 @@ func New(repo JobRepository, interval time.Duration, batch int) *JobWorker {
 }
 
 func (w *JobWorker) Register(jobType job.Type, handler JobHandler) {
+	log.Printf("register handler %s", string(jobType))
 	w.handlers[jobType] = handler
 }
 
@@ -58,9 +59,6 @@ func (w *JobWorker) processBatch(ctx context.Context) {
 		return
 	}
 
-	log.Println("ini jumlah pending job")
-	log.Println(len(jobs))
-
 	for _, j := range jobs {
 		go w.handleJob(ctx, j)
 		// TODO: add worker pool, mutex, and mark status
@@ -80,9 +78,11 @@ func (w *JobWorker) handleJob(ctx context.Context, j job.Job) {
 		err := w.repo.UpdateStatus(ctx, j.UUID.String(), job.StatusFailed, &errMessage)
 		if err != nil {
 			log.Printf("error update status %s on worker: %v\n", job.StatusFailed, err)
+			return
 
 		}
 		log.Printf("error handler on worker: %v\n", err)
+		return
 	}
 
 	err = handler(ctx, j.Payload)

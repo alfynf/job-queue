@@ -1,14 +1,17 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
+	"time"
 
 	"github.com/alfynf/job-queue/internal/handler"
 	"github.com/alfynf/job-queue/internal/job"
 	"github.com/alfynf/job-queue/internal/repository"
 	"github.com/alfynf/job-queue/internal/router"
 	"github.com/alfynf/job-queue/internal/service"
+	"github.com/alfynf/job-queue/internal/worker"
 	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -66,14 +69,14 @@ func main() {
 	service := service.NewJobService(repo)
 	handler := handler.NewJobHandler(service)
 
-	// worker := worker.New(repo, 3*time.Second, 10)
+	worker := worker.New(repo, 3*time.Second, 10)
 
-	// worker.Register("sending_mail", func(ctx context.Context, payload map[string]interface{}) error {
-	// 	log.Printf("sending mail to %s", payload["to"])
-	// 	return nil
-	// })
+	worker.Register(job.TypeSendingEmail, func(ctx context.Context, payload map[string]interface{}) error {
+		log.Printf("sending mail to %s", payload["to"])
+		return nil
+	})
 
-	// go worker.Start(context.Background())
+	go worker.Start(context.Background())
 
 	r := router.SetupRouter(handler)
 	r.Run(":8080")
