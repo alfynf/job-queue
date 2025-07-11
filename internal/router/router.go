@@ -9,6 +9,7 @@ func SetupRouter(jobHandler *handler.JobHandler) *gin.Engine {
 	r := gin.Default()
 
 	r.POST("/jobs", jobHandler.SubmitJob)
+	r.GET("/jobs/:uuid", jobHandler.GetJobStatus)
 
 	return r
 }

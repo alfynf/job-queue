@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -68,5 +69,45 @@ func TestSubmitJobInvalidReqBody(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+}
+
+func TestGetJobStatusSuccess(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ctx := context.Background()
+	mockService := new(mockSvc.JobService)
+
+	uuid := uuid.New()
+
+	expectedJob := job.Job{
+		UUID:   uuid,
+		Status: job.StatusPending,
+		Type:   job.TypeSendingEmail,
+	}
+
+	mockService.On("GetJobStatus", ctx, mock.Anything).Return(expectedJob, nil)
+
+	jobHandler := NewJobHandler(mockService)
+	router := gin.Default()
+	path := fmt.Sprintf("/jobs/%s", uuid.String())
+	method := "GET"
+	router.GET("/jobs/:uuid", jobHandler.GetJobStatus)
+
+	req, _ := http.NewRequest(method, path, nil)
+	req.Header.Set("Content-Type", "application/json")
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	type resBody struct {
+		UUID   string     `json:"uuid"`
+		Status job.Status `json:"status"`
+	}
+	var resp resBody
+	_ = json.NewDecoder(rec.Body).Decode(&resp)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, job.StatusPending, resp.Status)
+	mockService.AssertExpectations(t)
 
 }

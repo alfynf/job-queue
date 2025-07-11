@@ -52,3 +52,29 @@ func (h *JobHandler) SubmitJob(c *gin.Context) {
 	})
 
 }
+
+func (h *JobHandler) GetJobStatus(c *gin.Context) {
+	uuid := c.Param("uuid")
+	if uuid == "" {
+		c.JSON(http.StatusNotFound, gin.H{
+			"message": "Failed to get job status",
+			"error":   "UUID not found",
+		})
+		return
+	}
+
+	job, err := h.service.GetJobStatus(c.Request.Context(), uuid)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Failed to get job status",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Success get status job",
+		"status":  job.Status,
+	})
+
+}
